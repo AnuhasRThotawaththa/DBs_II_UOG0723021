@@ -1,0 +1,219 @@
+1##
+CREATE OR REPLACE PROCEDURE add_numbers(num1 INTEGER,num2 INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	results INTEGER;
+BEGIN
+	results := num1 +num2;
+	RAISE NOTICE'the sum of % and % is %',num1,num2,results;
+END;
+$$;
+
+CALL add_numbers(10,16);
+
+2##
+CREATE OR REPLACE PROCEDURE print_full_name(first_name TEXT, last_name TEXT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	full_name TEXT;
+BEGIN
+	full_name :=first_name ||''|| last_name;
+	RAISE NOTICE 'full Name :%',full_name;
+END;
+$$;
+
+3##
+CREATE OR REPLACE PROCEDURE double_value( INOUT salary NUMERIC)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	salary := salary * 2;
+END;
+$$;
+
+DO $$
+DECLARE
+	my_salary NUMERIC := 25000;
+BEGIN
+	CALL double_value(my_salary);
+	RAISE NOTICE 'Doubled Salary : %',my_salary;
+END;
+$$;
+
+4##
+CREATE TABLE products(
+	product_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	name TEXT NOT NULL,
+	price NUMERIC(10,2) NOT NULL,
+	stock_quantity INTEGER NOT NULL
+);
+CREATE OR REPLACE PROCEDURE add_product(
+	product_name TEXT,
+	product_price NUMERIC,
+	product_quantity INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	INSERT INTO products(name,price,stock_quantity)
+	VALUES(product_name,product_price,product_quantity);
+	RAISE NOTICE 'Product added : %, Price : %, Quantity %',product_name,product_price,product_quantity;
+END;
+$$;
+CALL add_product('laptop',230000.00,34');
+	
+5##
+CREATE OR REPLACE PROCEDURE get_product_by_id(p_id INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	p_name TEXT;
+	p_price NUMERIC;
+	p_stock INTEGER;
+BEGIN
+	SELECT name,price,stock_quantity
+	INTO p_name,p_price,p_stock
+	FROM products
+	WHERE product_id =p_id;
+
+	IF NOT FOUND THEN
+		RAISE NOTICE'Product with ID % not found.',p_id;
+	ELSE
+		RAISE NOTICE 'Product: %,Price: %,Stock: %',p_name,p_price,p_stock;
+	END IF;
+END;
+$$;
+
+6##
+CREATE OR REPLACE PROCEDURE update_product_stock(p_id INTEGER, new_stock INTEGER)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE products
+    SET stock_quantity = new_stock
+    WHERE product_id = p_id;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Product with ID % not found. No update performed.', p_id;
+    ELSE
+        RAISE NOTICE 'Stock updated for product ID %: New stock = %', p_id, new_stock;
+    END IF;
+END;
+$$;
+
+CALL get_product_by_id(1);
+CALL update_product_stock(1, 25);
+
+7##
+CREATE OR REPLACE PROCEDURE delete_product(p_id INTEGER)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM products
+    WHERE product_id = p_id;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Product with ID % not found. Nothing deleted.', p_id;
+    ELSE
+        RAISE NOTICE 'Product with ID % has been deleted.', p_id;
+    END IF;
+END;
+$$;
+
+8##
+CREATE OR REPLACE PROCEDURE calculate_total_stock_value_of_product(p_id INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    unit_price NUMERIC;
+    quantity INTEGER;
+    total_value NUMERIC;
+BEGIN
+    SELECT price, stock_quantity
+    INTO unit_price, quantity
+    FROM products
+    WHERE product_id = p_id;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Product with ID % not found.', p_id;
+    ELSE
+        total_value := unit_price * quantity;
+        RAISE NOTICE 'Total stock value for product ID %: %', p_id, total_value;
+    END IF;
+END;
+$$;
+
+9##
+CREATE OR REPLACE PROCEDURE check_stock_category(p_id INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    stock_qty INTEGER;
+    stock_category TEXT;
+BEGIN
+    -- Retrieve stock quantity for the given product ID
+    SELECT stock_quantity
+    INTO stock_qty
+    FROM products
+    WHERE product_id = p_id;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Product with ID % not found.', p_id;
+        RETURN;
+    END IF;
+
+    -- Determine stock category using CASE
+    stock_category := CASE
+        WHEN stock_qty < 10 THEN 'Low Stock'
+        WHEN stock_qty BETWEEN 10 AND 50 THEN 'Moderate Stock'
+        WHEN stock_qty > 50 THEN 'High Stock'
+    END;
+
+    RAISE NOTICE 'Product ID % has % (% units)', p_id, stock_category, stock_qty;
+END;
+$$;
+CALL check_stock_category(1);
+
+10##
+CREATE OR REPLACE PROCEDURE check_stock_level(p_id INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    stock_qty INTEGER;
+BEGIN
+    -- Fetch stock quantity for the given product ID
+    SELECT stock_quantity
+    INTO stock_qty
+    FROM products
+    WHERE product_id = p_id;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Product with ID % not found.', p_id;
+        RETURN;
+    END IF;
+
+    IF stock_qty <= 10 THEN
+        RAISE NOTICE 'Product ID %: Low stock (% units)', p_id, stock_qty;
+    ELSIF stock_qty > 10 AND stock_qty <= 55 THEN
+        RAISE NOTICE 'Product ID %: Sufficient stock (% units)', p_id, stock_qty;
+    ELSE
+        RAISE NOTICE 'Product ID %: High stock (% units)', p_id, stock_qty;
+    END IF;
+END;
+$$;
+CALL check_stock_level(3);
+
+
+
+
+
+
+
+
+
+
+
+
+
